@@ -1,0 +1,160 @@
+#pragma warning (disable: 4996)
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+FILE* fw;
+
+
+
+double WartoscFunkcji(int n, double x)								/// n - numer wyrazu
+{																	/// x - argument funkcji
+	double licznik = 1.0;
+	for (int i = 1; i <= 2 * n - 1; i = i + 2)
+	{
+		licznik = licznik * i;
+	}
+
+	double mianownik = 1.0;
+	for (int i = 2; i <= 2 * n + 1; i = i + 2)
+	{
+		mianownik = mianownik * i;
+	}
+	mianownik = mianownik * (2 * n + 1);
+
+	double potega = pow(x, 2 * n + 1);
+
+	return (licznik * potega) / mianownik;
+}
+
+
+
+double SumaSzeregu(int m, double x, double d, int &licznik, bool  &dokl)					/// m - ilosc wyrazow do zsumowania
+{																							/// x - argument funkcji
+	double suma = x;																		/// d - dokladnosc
+	for (int n = 1; n <= m; n++)															/// licznik - ile wyrazow zostalo zsumowane
+	{																						/// dokl - czy program zawiesil sie przez osiagniecie dokladnosci
+		double y = 0.0;
+		y = WartoscFunkcji(n, x);
+		suma += y;
+		if (fabs(y) < d) { dokl = true; licznik = n; break; }
+
+		licznik = n;
+	}
+	return suma;
+}
+
+
+
+int main()
+{
+	if (!(fw = fopen("wyniki.txt", "w")))
+	{
+		printf("Blad otwarcia zbioru\n");
+		exit(2);
+	}
+
+	double eps = 0.0;				/// dokladnosc szeregu 
+	double a = 0.0, b = 0.0;		/// przedzial mieszczacy sie w dziedzinie |x|<=1.
+	int n = 0;						/// okresla na ile czesci podzielony jest przedzial
+	int m = 0;						/// okresla ile wyrazow ma zostac zsumowane
+
+
+	printf("Dziedzina funkcji jest przedzial (-1;1)\n\n");
+
+
+	printf("Podaj poczatek i koniec przedzialu dla ktorego mam obliczyc sume szeregu: ");
+	if (scanf("%lf %lf", &a, &b) != 2)
+	{
+		printf("Blad danych\n");
+		system("pause");
+		exit(1);
+	}
+	if (a >= 1 || a <= -1 || b >= 1 || b <= -1 || a >= b )
+	{
+		printf("Podano niepoprawny przedzial\n");
+		system("pause");
+		exit(1);
+	}	
+
+
+	printf("Podaj na ile czesci chcesz podzielic swoj przedzial ( liczba naturalna dodatnia ): ");
+	if (scanf("%ld", &n) != 1)
+	{
+		printf("Blad danych\n");
+		system("pause");
+		exit(1);
+	}
+	if (n < 1)
+	{
+		printf("Podano niepoprawna liczbe podzialow\n");
+		system("pause");
+		exit(1);
+	}
+
+
+	double krok = (fabs(a) + fabs(b)) / (double)(n);
+
+
+	printf("Podaj dokladnosc z jaka chcesz sumowac szereg: ");
+	if (scanf("%lf", &eps) != 1)
+	{
+		printf("Blad danych\n");
+		system("pause");
+		exit(1);
+	}
+
+
+	printf("Podaj ile wyrazow chcesz zsumowac ( liczba naturalna dodatnia ): ");
+	if(scanf("%ld", &m) != 1)
+	{
+		printf("Blad danych\n");
+		system("pause");
+		exit(1);
+	}
+	if (m <= 0)
+	{
+		printf("Niepoprawna liczba wyrazow do zsumowania\n");
+	}
+
+
+	else
+	{
+		for (double x = a; x <= b+0.5*krok; x = x + krok)
+		{
+			bool dokladnosc = false;
+			int licznik_wyrazow = 0;
+			char tak = ' ';
+			double y = SumaSzeregu(m, x, eps, licznik_wyrazow, dokladnosc);
+
+
+			if (dokladnosc == true && licznik_wyrazow == m)
+			{
+				printf("\t%10.2lf\t\t%15.4lf\t\t%15.4lf\t\t%d\t\tDokladnosc + Maksymalny Wyraz\n", x, y, asin(x), licznik_wyrazow);
+				fprintf(fw, "\t%10.2lf\t\t%15.4lf\t\t%15.4lf\t\t%d\t\tDokladnosc + Maksymalny Wyraz\n", x, y, asin(x), licznik_wyrazow);
+			}
+			else
+			{
+				if (dokladnosc == true)
+				{
+					printf("\t%10.2lf\t\t%15.4lf\t\t%15.4lf\t\t%d\t\tDokladnosc\n", x, y, asin(x), licznik_wyrazow);
+					fprintf(fw, "\t%10.2lf\t\t%15.4lf\t\t%15.4lf\t\t%d\t\tDokladnosc\n", x, y, asin(x), licznik_wyrazow);
+				}
+				else
+				{
+					printf("\t%10.2lf\t\t%15.4lf\t\t%15.4lf\t\t%d\t\tMaksymalny wyraz\n", x, y, asin(x), licznik_wyrazow);
+					fprintf(fw, "\t%10.2lf\t\t%15.4lf\t\t%15.4lf\t\t%d\t\tMaksymalny wyraz\n", x, y, asin(x), licznik_wyrazow);
+				}
+			}
+
+		}
+	}
+
+
+
+	fclose(fw);
+	exit(0);
+	system("pause");
+
+
+	return 0;
+}
