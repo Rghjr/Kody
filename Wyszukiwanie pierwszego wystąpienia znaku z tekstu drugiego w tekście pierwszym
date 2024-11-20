@@ -1,0 +1,218 @@
+#pragma warning (disable: 4996)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <locale.h>
+
+#define MAX_LINE 8192
+#define TAB_SIZE 2
+
+FILE* odczyt = NULL;
+FILE* zapis = NULL;
+
+bool Przeszukaj(char znak, char szukane[], int dlugosc)
+{
+    for (int i = 0; i < dlugosc; i++)
+    {
+        if (szukane[i] == znak) return true;
+    }
+    return false;
+}
+
+void Funkcja(int d_len, int drugi_len, char** d, char* tab, int y )
+{
+    ///                                                                                                  Wyszukiwanie
+    int wiersz = -1;
+    int pozycja = -1;
+    char znak = ' ';
+    bool pierwszy = false;
+
+    for (int a = 0; a < d_len; a++)
+    {
+        for (int b = 0; b < strlen(d[a]); b++)
+        {
+            if (Przeszukaj(d[a][b], tab, y) == true)
+            {
+                if (wiersz == -1)
+                {
+                    wiersz = a;
+                    pozycja = b;
+                    znak = d[a][b];
+                    continue;
+                }
+                else
+                {
+                    if (wiersz >= a)
+                    {
+                        if (pozycja > b)
+                        {
+                            wiersz = a;
+                            pozycja = b;
+                            znak = d[a][b];
+                            continue;
+                        }
+                    }
+                }
+            }
+            if (wiersz == 0 && pozycja == 0) { pierwszy = true; break; }
+        }
+        if (pierwszy == true) break;
+    }
+
+    if (!(zapis = fopen("zapis.txt", "w")))
+    {
+        printf("Błąd otwarcia pliku zapis.txt\n");
+        exit(2);
+    }
+
+    ///                                                                                                 Zapis do pliku
+    if (wiersz != -1)
+    {
+        fprintf(zapis, "Znaleziono znak %c w wierszu %d na pozycji %d\n", znak, wiersz, pozycja);
+        printf("Znaleziono znak %c w wierszu %d na pozycji %d\n", znak, wiersz, pozycja);
+    }
+    else
+    {
+        fprintf(zapis, "Nie znaleziono żadnego znaku z tablicy drugiej w tablicy pierwszej\n");
+        printf("Nie znaleziono żadnego znaku z tablicy drugiej w tablicy pierwszej\n");
+    }
+
+    fclose(zapis);
+    zapis = NULL;
+}
+
+int main()
+{
+    setlocale(LC_CTYPE, "");
+
+
+    char bufor[MAX_LINE];
+    int len, i;
+
+    char** d = (char**)malloc(MAX_LINE * sizeof(char*));
+    char** drugi = (char**)malloc(MAX_LINE * sizeof(char*));
+    if (d == NULL || drugi == NULL)
+    {
+        printf("Brak pamięci dla tablic wskaźników\n");
+        exit(1);
+    }
+
+    if (!(odczyt = fopen("teksty.txt", "r")))
+    {
+        printf("Błąd otwarcia pliku teksty.txt\n");
+        exit(2);
+    }
+
+    //                                                                      Odczyt danych do pierwszej tablicy
+    i = 0;
+    while (i < MAX_LINE && fgets(bufor, MAX_LINE, odczyt))
+    {
+        len = strlen(bufor) + 1;
+        bufor[len - 1] = '\0';
+        d[i] = (char*)malloc(len);
+        if (d[i] == NULL)
+        {
+            printf("Brak pamięci dla elementu tablicy d[%d]\n", i);
+            exit(3);
+        }
+        strcpy(d[i], bufor);
+        i++;
+    }
+    int d_len = i;
+
+    fclose(odczyt);
+    odczyt = NULL;
+
+    if (!(odczyt = fopen("szukane.txt", "r")))
+    {
+        printf("Błąd otwarcia pliku szukane.txt\n");
+        exit(2);
+    }
+
+    ///                                                                   Odczyt danych do drugiej tablicy
+    i = 0;
+    while (i < MAX_LINE && fgets(bufor, MAX_LINE, odczyt))
+    {
+        len = strlen(bufor) + 1;
+        bufor[len - 1] = '\0';
+        drugi[i] = (char*)malloc(len);
+        if (drugi[i] == NULL)
+        {
+            printf("Brak pamięci dla elementu tablicy drugi[%d]\n", i);
+            exit(3);
+        }
+        strcpy(drugi[i], bufor);
+        i++;
+    }
+    int drugi_len = i;
+
+    fclose(odczyt);
+    odczyt = NULL;
+
+    ///                                                                  Tworzenie tablicy zawierającej unikatowe znaki tablicy drugiej
+    int tab_size = TAB_SIZE;
+    char* tab = (char*)malloc(tab_size * sizeof(char));
+    if (tab == NULL)
+    {
+        printf("Brak pamięci dla tablicy tab\n");
+        exit(4);
+    }
+    int y = 0;
+    bool z = false;
+
+
+    for (int a = 0; a < drugi_len; a++)
+    {
+        for (int b = 0; b < strlen(drugi[a]); b++)
+        {
+            if (drugi[a][b] == '\n' || drugi[a][b] == '\0') continue;
+            for (int c = 0; c < y; c++)
+            {
+                if (tab[c] == drugi[a][b]) { z = true; break; }
+            }
+
+            if (!z)
+            {
+                if (y >= tab_size)
+                {
+                    tab_size += 1;
+                    char* temp = (char*)realloc(tab, tab_size * sizeof(char));
+                    if (temp == NULL) {
+                        printf("Brak pamięci podczas rozszerzania tablicy tab\n");
+                        free(tab);
+                        exit(5);
+                    }
+                    tab = temp;
+                }
+                tab[y] = drugi[a][b];
+                y++;
+            }
+            z = false;
+        }
+    }
+
+    tab_size += 1;
+    char* temp = (char*)realloc(tab, tab_size * sizeof(char));
+    if (temp == NULL) {
+        printf("Brak pamięci podczas rozszerzania tablicy tab\n");
+        free(tab);
+        exit(5);
+    }
+    tab = temp;
+
+
+    tab[y] = '\0';
+
+
+    Funkcja(d_len, drugi_len, d, tab, y);
+
+    ///                                                                                                 Zwolnienie pamięci i zamknięcie plików
+    for (int j = 0; j < d_len; j++) free(d[j]);
+    for (int j = 0; j < drugi_len; j++) free(drugi[j]);
+    free(d);
+    free(drugi);
+    free(tab);
+    
+
+    return 0;
+}
