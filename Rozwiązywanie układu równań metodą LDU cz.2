@@ -1,0 +1,216 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#pragma warning(disable:4996)
+#define MAX_ERR 5
+FILE* zapis;
+
+
+static const char* p[] =
+{
+                            "",
+                            " zle dane",
+                            " otwarcie pliku",
+                            " brak pamieci",
+                            " Usage : ",
+                            " nieznany ",
+};
+
+
+void error(int nr, const char* str)
+{
+    int k;
+    k = nr >= MAX_ERR ? MAX_ERR : nr;
+    fprintf(stderr, "Blad(%d) - %s %s\n", nr, p[k], str);
+    system("pause");
+    exit(nr);
+}
+
+
+// Obliczanie Pasma macierzy A
+int ObliczPasmo(double** A, int n)
+{
+    int pasmo = 0;
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            if (A[i][j] != 0 && abs(i - j) > pasmo)
+            {
+                pasmo = abs(i - j);
+            }
+        }
+    }
+    return pasmo;
+}
+
+
+// Rozkład LDU macierzy pasmowej
+void RozkladLDU(double** A, double** L, double** D, double** U, int n, int pasmo)
+{
+    for (int i = 0; i < n; i++)
+    {
+        // Obliczanie D[i][i]
+        D[i][i] = A[i][i];
+        for (int k = i - pasmo; k < i; k++)
+        {
+            if (k >= 0)
+            {
+                D[i][i] -= L[i][k] * D[k][k] * U[k][i];
+            }
+        }
+
+        // Obliczanie L[j][i] dla j > i
+        for (int j = i + 1; j <= i + pasmo && j < n; j++)
+        {
+            L[j][i] = A[j][i];
+            for (int k = i - pasmo; k < i; k++)
+            {
+                if (k >= 0)
+                {
+                    L[j][i] -= L[j][k] * D[k][k] * U[k][i];
+                }
+            }
+            L[j][i] /= D[i][i];
+        }
+
+        // Obliczanie U[i][j] dla j > i
+        for (int j = i + 1; j <= i + pasmo && j < n; j++)
+        {
+            U[i][j] = A[i][j];
+            for (int k = i - pasmo; k < i; k++)
+            {
+                if (k >= 0)
+                {
+                    U[i][j] -= L[i][k] * D[k][k] * U[k][j];
+                }
+            }
+            U[i][j] /= D[i][i];
+        }
+    }
+}
+
+
+// Rozwiazywanie układu Ax = b przy użyciu LDU
+void RozwiazLDU(double** L, double** D, double** U, double* b, double* x, int n)
+{
+    double* y = (double*)malloc(n * sizeof(double));
+    double* z = (double*)malloc(n * sizeof(double));
+
+    // Rozwiązanie Ly = b
+    for (int i = 0; i < n; i++)
+    {
+        y[i] = b[i];
+        for (int k = 0; k < i; k++)
+        {
+            y[i] -= L[i][k] * y[k];
+        }
+    }
+
+    // Rozwiązanie Dz = y
+    for (int i = 0; i < n; i++)
+    {
+        z[i] = y[i] / D[i][i];
+    }
+
+    // Rozwiązanie Ux = z
+    for (int i = n - 1; i >= 0; i--)
+    {
+        x[i] = z[i];
+        for (int k = i + 1; k < n; k++)
+        {
+            x[i] -= U[i][k] * x[k];
+        }
+    }
+
+    free(y);
+    free(z);
+}
+
+
+// Alokacja pamieci
+double** DajMac(int n)
+{
+    double** tab;
+    tab = (double**)malloc(sizeof(double*) * n);
+    if (!tab)
+    {
+        error(3, "tablica usage");
+    }
+    for (int i = 0; i < n; i++)
+    {
+        tab[i] = (double*)malloc(sizeof(double) * n);
+        if (!tab[i])
+        {
+            error(3, "tablica usage");
+        }
+    }
+    return tab;
+}
+
+
+// Zapis wyników do pliku
+void ZapisDoPliku(double** L, double** D, double** U, double* x, int n)
+{
+    if (!(zapis = fopen("wyniki.txt", "w")))
+    {
+        error(2, "Nie można otworzyć pliku wyniki.txt.");
+    }
+
+    fprintf(zapis, "Rozklad LDU i rozwiazanie układu Ax = b\n\n");
+    printf("Rozklad LDU i rozwiazanie układu Ax = b\n\n");
+
+    // Zapis macierzy L
+    fprintf(zapis, "Macierz L:\n");
+    printf("Macierz L:\n");
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            fprintf(zapis, "%8.4lf ", L[i][j]);
+            printf("%8.4lf ", L[i][j]);
+        }
+        fprintf(zapis, "\n");
+        printf("\n");
+    }
+
+    // Zapis macierzy D
+    fprintf(zapis, "\nMacierz D:\n");
+    printf("\nMacierz D:\n");
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            fprintf(zapis, "%8.4lf ", D[i][j]);
+            printf("%8.4lf ", D[i][j]);
+        }
+        fprintf(zapis, "\n");
+        printf("\n");
+    }
+
+    // Zapis macierzy U
+    fprintf(zapis, "\nMacierz U:\n");
+    printf("\nMacierz U:\n");
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            fprintf(zapis, "%8.4lf ", U[i][j]);
+            printf("%8.4lf ", U[i][j]);
+        }
+        fprintf(zapis, "\n");
+        printf("\n");
+    }
+
+    // Zapis wektora wyników x
+    fprintf(zapis, "\nRozwiazanie x:\n");
+    printf("\nRozwiazanie x:\n");
+    for (int i = 0; i < n; i++)
+    {
+        fprintf(zapis, "x[%d] = %8.4lf\n", i, x[i]);
+        printf("x[%d] = %8.4lf\n", i, x[i]);
+    }
+
+    fclose(zapis);
+}
