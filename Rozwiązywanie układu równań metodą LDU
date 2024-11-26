@@ -1,0 +1,103 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+#pragma warning(disable:4996)
+FILE* fd;
+
+extern void error(int, const char*);
+extern double** DajMac(int);
+extern int ObliczPasmo(double**, int);
+extern void RozkladLDU(double**, double**, double**, double**, int, int);
+extern void RozwiazLDU(double**, double**, double**, double*, double*, int);
+extern void ZapisDoPliku(double**, double**, double**, double*, int);
+
+
+
+int main()
+{
+    setlocale(LC_CTYPE, "");
+
+    // Otwarcie pliku
+    int n = 0;
+    if (!(fd = fopen("dane.txt", "r")))
+    {
+        error(2, "Nie można otworzyć pliku dane.txt.");
+    }
+
+    // Wyciagniecie rozmiaru tablicy z pliku
+    if (fscanf(fd, "%d", &n) != 1 || n <= 0)
+    {
+        error(1, "Zly rozmiar macierzy");
+    }
+
+    // Alokacja tablic
+    double** A = DajMac(n);                             // macierz A
+    double** L = DajMac(n);                             // macierz L ( pelna zer - linijka 37 )
+    double** D = DajMac(n);                             // macierz D ( pelna zer - linijka 38 )
+    double** U = DajMac(n);                             // macierz U ( pelna zer - linijka 39 )
+    double* b = (double*)malloc(sizeof(double) * n);    // macierz b wyrazów wolnych
+    double* x = (double*)malloc(sizeof(double) * n);    // macierz x argumentów
+
+    // Zerowanie macierzy L, D, U
+    for (int i = 0; i < n; i++)
+    {
+        L[i] = (double*)calloc(n, sizeof(double));
+        D[i] = (double*)calloc(n, sizeof(double));
+        U[i] = (double*)calloc(n, sizeof(double));
+    }
+
+    // Wczytanie macierzy A
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            if (fscanf(fd, "%lf", &A[i][j]) != 1)
+            {
+                error(1, "Niepoprawny rozmiar macierzy A w pliku");
+            }
+        }
+    }
+
+    // Wczytanie macierzy b
+    for (int i = 0; i < n; i++)
+    {
+        if (fscanf(fd, "%lf", &b[i]) != 1)
+        {
+            error(1, "Niepoprawny rozmiar macierzy b");
+        }
+    }
+    fclose(fd);
+
+
+
+
+
+    // Obliczanie pasma macierzy
+    int pasmo = ObliczPasmo(A, n);
+    printf("Pasmo macierzy: %d\n", pasmo);
+
+    // Rozkład LDU
+    RozkladLDU(A, L, D, U, n, pasmo);
+
+    // Rozwiązywanie układu Ax = b
+    RozwiazLDU(L, D, U, b, x, n);
+
+    ZapisDoPliku(L, D, U, x, n);
+
+    // Zwalnianie pamięci
+    for (int i = 0; i < n; i++)
+    {
+        free(A[i]);
+        free(L[i]);
+        free(D[i]);
+        free(U[i]);
+    }
+    free(A);
+    free(L);
+    free(D);
+    free(U);
+    free(b);
+    free(x);
+
+    return 0;
+}
